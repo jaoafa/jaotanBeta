@@ -236,7 +236,7 @@ public class BuildTask extends Thread {
         }
     }
 
-    boolean runCommand(File currentDir, String command) {
+    static boolean runCommand(File currentDir, String command) {
         try {
             Process p;
             ProcessBuilder pb = new ProcessBuilder();

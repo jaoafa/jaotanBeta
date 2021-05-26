@@ -22,6 +22,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.security.auth.login.LoginException;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -145,6 +146,10 @@ public class Main {
                     .asOptionalWithDefault("master"))
                 .handler(Main::commandBeta)
                 .build());
+            manager.command(manager.commandBuilder("beta")
+                .literal("stop", "disable")
+                .handler(Main::commandStop)
+                .build());
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -187,5 +192,25 @@ public class Main {
         Message sendMessage = message.reply(new EmbedBuilder().setTitle("LOADING...").build()).complete();
         task = new BuildTask(member, sendMessage, pmg, user, repo, branch);
         task.start();
+    }
+
+    private static void commandStop(CommandContext<JDACommandSender> context) {
+        if (!context.getSender().getEvent().isPresent()) {
+            return;
+        }
+        if (!context.getSender().getEvent().get().isFromGuild()) {
+            return;
+        }
+        Guild guild = context.getSender().getEvent().get().getGuild();
+        Member member = guild.getMember(context.getSender().getUser());
+        if (member == null) return;
+        Message message = context.getSender().getEvent().get().getMessage();
+
+        boolean stopSystemd = BuildTask.runCommand(null, "systemctl start Javajaotan2Beta");
+        message.reply(new EmbedBuilder()
+            .setColor(Color.RED)
+            .setTitle("Stop jaotanBeta")
+            .setDescription("Javajaotan (Beta)の停止に" + (stopSystemd ? "成功" : "失敗") + "しました。")
+            .build()).queue();
     }
 }
