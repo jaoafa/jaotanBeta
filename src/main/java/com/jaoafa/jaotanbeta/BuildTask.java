@@ -2,6 +2,7 @@ package com.jaoafa.jaotanbeta;
 
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -20,15 +21,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class BuildTask extends Thread {
-    Member member;
+    User discord_user;
     Message message;
     ProgressMessageGenerator pmg;
     String user;
     String repo;
     String branch;
 
-    public BuildTask(Member member, Message message, ProgressMessageGenerator pmg, String user, String repo, String branch) {
-        this.member = member;
+    public BuildTask(User discord_user, Message message, ProgressMessageGenerator pmg, String user, String repo, String branch) {
+        this.discord_user = discord_user;
         this.message = message;
         this.pmg = pmg;
         this.user = user;
@@ -223,8 +224,8 @@ public class BuildTask extends Thread {
         message.editMessage(pmg.build()).queue();
 
         JSONObject data = new JSONObject();
-        data.put("builder", member.getUser().getAsTag());
-        data.put("builderId", member.getId());
+        data.put("builder", discord_user.getAsTag());
+        data.put("builderId", discord_user.getId());
         data.put("user", user);
         data.put("repo", repo);
         data.put("branch", branch);
@@ -237,6 +238,7 @@ public class BuildTask extends Thread {
     }
 
     static boolean runCommand(File currentDir, String command) {
+        System.out.println("runCommand()");
         try {
             Process p;
             ProcessBuilder pb = new ProcessBuilder();

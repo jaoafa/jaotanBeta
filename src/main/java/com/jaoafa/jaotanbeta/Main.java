@@ -2,6 +2,7 @@ package com.jaoafa.jaotanbeta;
 
 import cloud.commandframework.arguments.standard.StringArgument;
 import cloud.commandframework.context.CommandContext;
+import cloud.commandframework.exceptions.CommandExecutionException;
 import cloud.commandframework.exceptions.InvalidSyntaxException;
 import cloud.commandframework.exceptions.NoPermissionException;
 import cloud.commandframework.exceptions.NoSuchCommandException;
@@ -16,6 +17,7 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.json.JSONArray;
@@ -79,11 +81,6 @@ public class Main {
                 sender -> {
                     MessageReceivedEvent event = sender.getEvent().orElse(null);
 
-                    if (sender instanceof JDAPrivateSender) {
-                        JDAPrivateSender jdaPrivateSender = (JDAPrivateSender) sender;
-                        return new JDAPrivateSender(event, jdaPrivateSender.getUser(), jdaPrivateSender.getPrivateChannel());
-                    }
-
                     if (sender instanceof JDAGuildSender) {
                         JDAGuildSender jdaGuildSender = (JDAGuildSender) sender;
                         return new JDAGuildSender(event, jdaGuildSender.getMember(), jdaGuildSender.getTextChannel());
@@ -93,10 +90,6 @@ public class Main {
                 },
                 user -> {
                     MessageReceivedEvent event = user.getEvent().orElse(null);
-                    if (user instanceof JDAPrivateSender) {
-                        JDAPrivateSender privateUser = (JDAPrivateSender) user;
-                        return new JDAPrivateSender(event, privateUser.getUser(), privateUser.getPrivateChannel());
-                    }
 
                     if (user instanceof JDAGuildSender) {
                         JDAGuildSender guildUser = (JDAGuildSender) user;
@@ -123,10 +116,7 @@ public class Main {
                 }
             });
 
-            manager.registerExceptionHandler(Exception.class, (c, e) -> {
-                if (e instanceof NoSuchCommandException || e instanceof InvalidSyntaxException || e instanceof NoPermissionException) {
-                    return;
-                }
+            manager.registerExceptionHandler(CommandExecutionException.class, (c, e) -> {
                 if (c.getEvent().isPresent()) {
                     c.getEvent().get().getMessage().reply(MessageFormat.format("コマンドの実行に失敗しました: {0} ({1})",
                         e.getMessage(),
@@ -134,6 +124,10 @@ public class Main {
                 }
             });
 
+            manager.command(manager.commandBuilder("beta")
+                .literal("stop", "disable")
+                .handler(Main::commandStop)
+                .build());
             manager.command(manager.commandBuilder("beta")
                 .argument(StringArgument
                     .<JDACommandSender>newBuilder("user")
@@ -146,16 +140,14 @@ public class Main {
                     .asOptionalWithDefault("master"))
                 .handler(Main::commandBeta)
                 .build());
-            manager.command(manager.commandBuilder("beta")
-                .literal("stop", "disable")
-                .handler(Main::commandStop)
-                .build());
+            System.out.println(manager.getCommands());
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
     private static void commandBeta(CommandContext<JDACommandSender> context) {
+        System.out.println("commandBeta()");
         if (!context.getSender().getEvent().isPresent()) {
             return;
         }
@@ -163,8 +155,10 @@ public class Main {
             return;
         }
         Guild guild = context.getSender().getEvent().get().getGuild();
-        Member member = guild.getMember(context.getSender().getUser());
-        if (member == null) return;
+        if(guild.getIdLong() != 597378876556967936L){
+            return;
+        }
+        User dis_user = context.getSender().getUser();
         Message message = context.getSender().getEvent().get().getMessage();
 
         File allowUsersFile = new File("allowUsers.json");
@@ -174,7 +168,7 @@ public class Main {
         try {
             String allowUsersJson = String.join("\n", Files.readAllLines(allowUsersFile.toPath()));
             List<Object> allowUsers = new JSONArray(allowUsersJson).toList();
-            if (!allowUsers.contains(member.getId())) {
+            if (!allowUsers.contains(dis_user.getId())) {
                 message.reply("あなたにはこのコマンドを使用する権限がありません。").queue();
                 return;
             }
@@ -190,11 +184,12 @@ public class Main {
 
         ProgressMessageGenerator pmg = new ProgressMessageGenerator();
         Message sendMessage = message.reply(new EmbedBuilder().setTitle("LOADING...").build()).complete();
-        task = new BuildTask(member, sendMessage, pmg, user, repo, branch);
+        task = new BuildTask(dis_user, sendMessage, pmg, user, repo, branch);
         task.start();
     }
 
     private static void commandStop(CommandContext<JDACommandSender> context) {
+        System.out.println("commandStop()");
         if (!context.getSender().getEvent().isPresent()) {
             return;
         }
@@ -202,13 +197,14 @@ public class Main {
             return;
         }
         Guild guild = context.getSender().getEvent().get().getGuild();
-        Member member = guild.getMember(context.getSender().getUser());
-        if (member == null) return;
+        if(guild.getIdLong() != 597378876556967936L){
+            return;
+        }
         Message message = context.getSender().getEvent().get().getMessage();
 
         boolean stopSystemd = BuildTask.runCommand(null, "systemctl start Javajaotan2Beta");
         message.reply(new EmbedBuilder()
-            .setColor(Color.RED)
+            .setColor(stopSystemd ? Color.GREEN : Color.RED)
             .setTitle("Stop jaotanBeta")
             .setDescription("Javajaotan (Beta)の停止に" + (stopSystemd ? "成功" : "失敗") + "しました。")
             .build()).queue();
